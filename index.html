@@ -1,1 +1,126 @@
 <h1>학식 품절 알림</h1>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>학식 품절 알림</title>
+<style>
+  :root {
+    --bg: #e9efec; --card: #ffffff; --ink: #18282d; --sub: #5b6b70; --line: #d3ddd9;
+    --ok: #1f8a5b; --warn: #c97a10; --out: #b83a2e; --track: #e3eae7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
+  header h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
+  header p { margin: 4px 0 0; color: var(--sub); font-size: 15px; }
+  .clock { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 6px; }
+  .clock b { font-size: 34px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .clock span { color: var(--sub); font-size: 14px; }
+  .notice { background: #fff6dc; border: 1px solid #ecd58a; border-radius: 8px; padding: 10px 12px;
+    font-size: 13.5px; margin: 10px 0 18px; }
+  .menu { display: grid; gap: 14px; }
+  .item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+    display: grid; grid-template-columns: 84px 1fr; gap: 14px; }
+  .item.out { background: #f4f1f0; }
+  .item.out .photo { filter: grayscale(1); opacity: .55; }
+  .photo { width: 84px; height: 84px; border-radius: 10px; background: #eef3f0;
+    display: grid; place-items: center; font-size: 44px; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .name { font-size: 18px; font-weight: 700; margin: 0; }
+  .name small { display: block; font-size: 12.5px; font-weight: 400; color: var(--sub); }
+  .chip { flex: none; font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: #fff; }
+  .s-ok { background: var(--ok); } .s-warn { background: var(--warn); } .s-out { background: var(--out); }
+  .meta { color: var(--sub); font-size: 14px; margin: 4px 0 8px; }
+  .bar { height: 10px; background: var(--track); border-radius: 999px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; transition: width .6s ease; }
+  .stock { display: flex; justify-content: space-between; font-size: 14px; margin-top: 6px; }
+  .eta { font-weight: 700; }
+  .eta.s-ok-t { color: var(--ok); } .eta.s-warn-t { color: var(--warn); } .eta.s-out-t { color: var(--out); }
+  footer { margin-top: 22px; color: var(--sub); font-size: 12.5px; }
+  @media (max-width: 380px) { .item { grid-template-columns: 64px 1fr; } .photo { width: 64px; height: 64px; font-size: 34px; } }
+  @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>오늘의 학식</h1>
+    <p>식당에 가기 전에 품절 여부를 먼저 확인하세요.</p>
+  </header>
+
+  <div class="clock"><b id="clock">11:00</b><span>시연용 시계 (3초에 1분씩 흘러요)</span></div>
+  <div class="notice">시연용 가상 데이터입니다. 실제 재고, 칼로리, 가격과 다를 수 있습니다.</div>
+
+  <main class="menu" id="menu"></main>
+  <footer>배식 시간 11:00 ~ 13:30 / 품절 임박은 남은 수량이 20% 이하일 때 표시돼요.</footer>
+</div>
+
+<script>
+// 가상 메뉴 데이터 (다음 단계에서 DynamoDB에서 불러오는 방식으로 바꿀 예정)
+// rate: 시연용 판매 속도(분당 개수)
+const MENUS = [
+  { name: "제육덮밥", en: "Spicy pork rice bowl", price: 5500, kcal: 720, emoji: "🍛", total: 120, rate: 1.1 },
+  { name: "돈까스", en: "Pork cutlet", price: 6000, kcal: 850, emoji: "🍱", total: 100, rate: 1.0 },
+  { name: "김치찌개", en: "Kimchi stew", price: 5000, kcal: 560, emoji: "🍲", total: 90, rate: 0.6 },
+  { name: "비빔밥", en: "Bibimbap", price: 5500, kcal: 640, emoji: "🥗", total: 80, rate: 0.5 },
+  { name: "치킨마요덮밥", en: "Chicken mayo rice bowl", price: 5500, kcal: 780, emoji: "🍗", total: 60, rate: 1.2 },
+];
+const OPEN = 11 * 60, CLOSE = 13 * 60 + 30;   // 분 단위
+let now = OPEN;
+let stock = MENUS.map(m => m.total);
+
+const pad = n => String(n).padStart(2, "0");
+const hhmm = min => pad(Math.floor(min / 60)) + ":" + pad(min % 60);
+
+function statusOf(i) {
+  const left = Math.floor(stock[i]);
+  if (left <= 0) return "out";
+  if (left <= MENUS[i].total * 0.2) return "warn";
+  return "ok";
+}
+
+function render() {
+  document.getElementById("clock").textContent = hhmm(now);
+  document.getElementById("menu").innerHTML = MENUS.map((m, i) => {
+    const left = Math.max(0, Math.floor(stock[i]));
+    const st = statusOf(i);
+    const label = { ok: "판매중", warn: "품절 임박", out: "품절" }[st];
+    const color = { ok: "var(--ok)", warn: "var(--warn)", out: "var(--out)" }[st];
+    let eta;
+    if (st === "out") {
+      eta = "품절되었어요";
+    } else {
+      const soldOutAt = now + Math.round(left / m.rate);
+      eta = soldOutAt >= CLOSE ? "마감까지 여유 있어요" : "약 " + hhmm(soldOutAt) + "경 품절 예상";
+    }
+    return `
+      <article class="item ${st === "out" ? "out" : ""}">
+        <div class="photo" aria-hidden="true">${m.emoji}</div>
+        <div>
+          <div class="top">
+            <h2 class="name">${m.name}<small>${m.en}</small></h2>
+            <span class="chip s-${st}">${label}</span>
+          </div>
+          <div class="meta">${m.price.toLocaleString()}원, ${m.kcal}kcal</div>
+          <div class="bar"><i style="width:${(left / m.total) * 100}%; background:${color}"></i></div>
+          <div class="stock"><span>남은 수량 ${left}개</span><span class="eta s-${st}-t">${eta}</span></div>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+// 시연용 시뮬레이션: 3초마다 1분이 지나고 재고가 줄어요
+function tick() {
+  now += 1;
+  if (now > CLOSE) { now = OPEN; stock = MENUS.map(m => m.total); }
+  MENUS.forEach((m, i) => { stock[i] = Math.max(0, stock[i] - m.rate * (0.6 + Math.random() * 0.8)); });
+  render();
+}
+render();
+setInterval(tick, 3000);
+</script>
+</body>
+</html>
