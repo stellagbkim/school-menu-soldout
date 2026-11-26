@@ -16,11 +16,12 @@
       display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
     }
     header h1 { margin: 0; font-size: 1.2rem; }
-    .container { max-width: 960px; margin: 20px auto; padding: 0 16px; }
+    .container { max-width: 960px; margin: 20px auto; padding: 0 16px 40px; }
     .btn {
       border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer;
       font-weight: 600; font-size: 0.9rem; transition: 0.15s;
     }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-outline { background: #fff; color: var(--text); border: 1px solid #d1d5db; }
     .btn-heart { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
@@ -33,6 +34,9 @@
       background: linear-gradient(135deg, #1d4ed8, #3b82f6); color: #fff;
       border-radius: 14px; padding: 18px; margin-bottom: 20px;
     }
+    .breakfast-banner.closed {
+      background: linear-gradient(135deg, #475569, #64748b);
+    }
     .progress-bar { background: rgba(255,255,255,0.25); height: 12px; border-radius: 99px; overflow: hidden; margin: 10px 0; }
     .progress-fill { background: #fde047; height: 100%; transition: width 0.3s; }
 
@@ -41,27 +45,37 @@
     .card {
       background: var(--card); border-radius: 14px; padding: 16px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 2px solid transparent; position: relative;
+      display: flex; flex-direction: column;
     }
     .card.allergy-alert { border-color: var(--danger); background: #fff5f5; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
     .corner-tag { font-size: 0.8rem; font-weight: 700; color: var(--primary); background: #eff6ff; padding: 4px 8px; border-radius: 6px; }
-    .kcal-tag { font-size: 0.78rem; color: #6b7280; background: #f3f4f6; padding: 3px 8px; border-radius: 6px; }
+    .kcal-tag { font-size: 0.78rem; color: #6b7280; background: #f3f4f6; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
 
     /* 빨간 알레르기 경고등 */
     .allergy-light {
       display: inline-flex; align-items: center; gap: 6px; margin-bottom: 10px;
       background: #fee2e2; color: #b91c1c; font-weight: 700; font-size: 0.82rem;
-      padding: 5px 10px; border-radius: 99px;
+      padding: 5px 10px; border-radius: 99px; width: fit-content;
     }
     .red-dot {
       width: 10px; height: 10px; border-radius: 50%; background: var(--danger);
-      box-shadow: 0 0 8px var(--danger); animation: blink 1s infinite;
+      box-shadow: 0 0 8px var(--danger); animation: blink 1s infinite; flex-shrink: 0;
     }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    .menu-list { font-size: 0.93rem; line-height: 1.5; margin: 8px 0 12px; white-space: pre-line; }
+    .menu-list { font-size: 0.93rem; line-height: 1.5; margin: 8px 0 12px; white-space: pre-line; flex: 1; }
     .meta-box { background: #f9fafb; border-radius: 8px; padding: 10px; font-size: 0.84rem; margin-bottom: 12px; }
+    .meta-muted { background: #f3f4f6; color: #6b7280; border-radius: 8px; padding: 10px; font-size: 0.82rem; }
     .card-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+    .empty-state {
+      grid-column: 1 / -1; text-align: center; padding: 40px 16px;
+      background: #fff; border-radius: 14px; color: #6b7280; font-size: 0.95rem;
+    }
+    .disclaimer {
+      margin-top: 24px; font-size: 0.8rem; color: #6b7280; line-height: 1.5;
+    }
 
     /* 로그인 모달 */
     .modal-bg {
@@ -78,9 +92,12 @@
     input[type="email"], input[type="text"] {
       width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; margin: 6px 0 12px;
     }
+    .email-row { display: flex; gap: 6px; align-items: center; margin: 6px 0 12px; }
+    .email-row input[type="email"] { margin: 0; flex: 1; }
     .toast {
       position: fixed; bottom: 20px; right: 20px; background: #111827; color: #fff;
       padding: 12px 18px; border-radius: 10px; font-size: 0.88rem; display: none; z-index: 200;
+      max-width: 340px; line-height: 1.4;
     }
   </style>
 </head>
@@ -91,7 +108,7 @@
   </header>
 
   <div class="container">
-    <!-- 천원의 아침밥 실시간 수량 현황 -->
+    <!-- 천원의 아침밥 수량 현황 -->
     <section class="breakfast-banner" id="breakfastBox"></section>
 
     <div class="controls">
@@ -101,6 +118,11 @@
     </div>
 
     <div class="grid" id="menuGrid"></div>
+
+    <p class="disclaimer">
+      ※ 알레르기 경고는 메뉴명 키워드 기반 추정이며, 소스·조미료 등 숨은 원재료가 포함될 수 있으므로 정확한 정보는 식당 영양사실에 확인하세요.<br />
+      ※ 품절 예상 시간 및 추정 칼로리는 참고용 모델 계산값입니다.
+    </p>
   </div>
 
   <!-- 로그인 & 알레르기 설정 모달 -->
@@ -108,14 +130,17 @@
     <div class="modal">
       <h3 style="margin-top:0;">로그인 및 알레르기 설정</h3>
       <label>이메일 (품절 30분 전 알림 수신용)</label>
-      <input type="email" id="loginEmail" placeholder="student@kookmin.ac.kr" />
+      <div class="email-row">
+        <input type="email" id="loginEmail" placeholder="student@kookmin.ac.kr" />
+        <button type="button" class="btn btn-outline" id="loadUserBtn" onclick="loadSavedUser()" style="white-space:nowrap;">불러오기</button>
+      </div>
       <label>이름/닉네임</label>
       <input type="text" id="loginName" placeholder="국민인" />
       <label>알레르기 유발 식재료 선택 (해당 메뉴에 빨간 경고등 표시)</label>
       <div class="allergy-grid" id="allergyCheckboxes"></div>
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
         <button class="btn btn-outline" onclick="closeLogin()">취소</button>
-        <button class="btn btn-primary" onclick="saveLogin()">저장 및 로그인</button>
+        <button class="btn btn-primary" id="saveLoginBtn" onclick="saveLogin()">저장 및 로그인</button>
       </div>
     </div>
   </div>
@@ -123,10 +148,13 @@
   <div class="toast" id="toast"></div>
 
   <script>
+    // AWS Lambda Function URL (DynamoDB kmu_users 연동)
+    const USER_API_URL = "https://3fdsjtbhvgng4lgjyaj5doccmm0ldgoa.lambda-url.ap-southeast-2.on.aws/";
+
     // 1. 알레르기 키워드 매핑 사전
     const ALLERGY_MAP = {
       "대두": ["두부", "순두부", "두유", "된장", "청국장", "콩나물", "콩비지", "유부", "간장", "콩"],
-      "계란": ["계란", "달걀", "후라이", "에그", "메추리알", "오므라이스", "마요", "전"],
+      "계란": ["계란", "달걀", "후라이", "에그", "메추리알", "오므라이스", "마요", "계란말이", "계란찜", "감자전", "단호박전", "동그랑땡"],
       "우유": ["우유", "치즈", "크림", "요거트", "요구르트", "버터", "모카", "푸딩", "로제"],
       "밀": ["빵", "국수", "칼국수", "우동", "라면", "파스타", "돈가스", "돈까스", "만두", "떡볶이", "수제비", "파이", "샌드위치", "핫도그", "전병"],
       "돼지고기": ["돼지", "돈육", "삼겹", "제육", "돈가스", "돈까스", "수육", "햄", "소시지", "소세지", "스팸", "순대", "부대찌개"],
@@ -139,299 +167,37 @@
     // 2. 메뉴 키워드 기반 추정 칼로리 사전
     const KCAL_RULES = [
       ["돈가스", 780], ["돈까스", 780], ["스테이크", 760], ["파스타", 720], ["백숙", 700],
-      ["덮밥", 680], ["볶음밥", 650], ["국밥", 620], ["찌개", 580], ["부대찌개", 720],
+      ["덮밥", 680], ["볶음밥", 650], ["국밥", 620], ["부대찌개", 720], ["찌개", 580],
       ["라면", 540], ["국수", 510], ["우동", 490], ["떡볶이", 560], ["샐러드", 340],
       ["주먹밥", 380], ["천원의 아침밥", 570]
     ];
 
-    // 3. 상태 관리 (실서비스 시 Firestore로 대체할 저장소)
+    // 오늘 날짜 유틸
+    function getTodayKey() {
+      const now = new Date();
+      return `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}`;
+    }
+
+    function compareDateWithToday(dateStr) {
+      const match = dateStr.match(/(\d{4})\.(\d{2})\.(\d{2})/);
+      if (!match) return "other";
+      const targetKey = `${match[1]}.${match[2]}.${match[3]}`;
+      const todayKey = getTodayKey();
+      if (targetKey === todayKey) return "today";
+      return targetKey > todayKey ? "future" : "past";
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&")
+        .replace(/</g, "<")
+        .replace(/>/g, ">")
+        .replace(/"/g, """);
+    }
+
+    // 3. 상태 관리
+    const TODAY_KEY = getTodayKey();
     let menuData = null;
     let currentUser = JSON.parse(localStorage.getItem("kmu_user") || "null");
-    let heartDB = JSON.parse(localStorage.getItem("kmu_hearts") || "{}"); // { menuId: ["email1", ...] }
-    let soldOutReports = JSON.parse(localStorage.getItem("kmu_soldout") || "{}"); // { menuId: true }
-    let breakfastUsedOffset = Number(localStorage.getItem("kmu_breakfast_offset") || "0");
-
-    // 국민대 홈페이지 샘플 폴백 (menu.json 생성 전 테스트용)
-    const FALLBACK_DATA = {
-      updated_at: "샘플 모드 (GitHub Actions 실행 전)",
-      cafeterias: [
-        {
-          name: "학생식당(복지관 1층)",
-          dates: ["2026.11.26(목)"],
-          corners: [
-            {
-              corner: "천원의 아침밥",
-              menus: { "2026.11.26(목)": { items: ["순두부계란국", "돈육볶음", "양배추쌈*쌈장", "쌀밥/도시락김", "국민두유", "★천원의 꾸러미팩 초코파이/바나나우유"], price: "￦1000" } }
-            },
-            {
-              corner: "가마 중식",
-              menus: { "2026.11.26(목)": { items: ["뚝)돼지고기순두부찌개", "쌀밥", "떡산적스테이크", "콩나물무침"], price: "￦5200" } }
-            },
-            {
-              corner: "데일리밥 중식",
-              menus: { "2026.11.26(목)": { items: ["유산슬덮밥", "춘권"], price: "￦3900" } }
-            }
-          ]
-        },
-        {
-          name: "한울식당(법학관 지하1층)",
-          dates: ["2026.11.26(목)"],
-          corners: [
-            {
-              corner: "2코너 NOODLE",
-              menus: { "2026.11.26(목)": { items: ["[중식] 떡만두국&메밀전병"], price: "￦4300" } }
-            },
-            {
-              corner: "3코너 CUTLET",
-              menus: { "2026.11.26(목)": { items: ["[중식] 스팸김치밥버거(후라이)", "로제떡볶이", "귤"], price: "￦5500" } }
-            }
-          ]
-        }
-      ]
-    };
-
-    function showToast(msg) {
-      const el = document.getElementById("toast");
-      el.textContent = msg;
-      el.style.display = "block";
-      setTimeout(() => { el.style.display = "none"; }, 3200);
-    }
-
-    // 추정 칼로리 계산
-    function estimateKcal(text) {
-      for (const [kw, kcal] of KCAL_RULES) {
-        if (text.includes(kw)) return kcal;
-      }
-      return 550;
-    }
-
-    // 알레르기 매칭 검사
-    function detectAllergies(text) {
-      if (!currentUser || !currentUser.allergies?.length) return [];
-      const hits = [];
-      for (const allergen of currentUser.allergies) {
-        const keywords = ALLERGY_MAP[allergen] || [];
-        const matched = keywords.filter(kw => text.includes(kw));
-        if (matched.length > 0) hits.push(`${allergen}(${matched[0]})`);
-      }
-      return hits;
-    }
-
-    // 품절 예상 시간 및 30분 전 알림 시간 계산
-    function predictSoldOut(cornerName, heartCount, isSoldOut) {
-      if (isSoldOut) return { soldOutStr: "품절됨", alertStr: "-" };
-      const isBreakfast = cornerName.includes("아침") || cornerName.includes("조식");
-      // 기준 품절 시간(분): 조식 09:20(560분), 중식 13:40(820분)에서 하트 1개당 2분씩 앞당김
-      const baseMin = isBreakfast ? 9 * 60 + 20 : 13 * 60 + 40;
-      const minBound = isBreakfast ? 8 * 60 + 30 : 12 * 60 + 10;
-      const predictedMin = Math.max(minBound, baseMin - heartCount * 2);
-      const alertMin = predictedMin - 30;
-
-      const fmt = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-      return { soldOutStr: fmt(predictedMin), alertStr: fmt(alertMin) };
-    }
-
-    // 천원의 아침밥 잔여 수량 렌더링
-    function renderBreakfastBanner() {
-      const totalQuota = 150;
-      const now = new Date();
-      const mins = now.getHours() * 60 + now.getMinutes();
-      // 08:00(480) ~ 10:00(600) 사이 시간 경과에 따른 추정 소진량
-      let elapsedRatio = 0;
-      if (mins >= 480 && mins <= 600) elapsedRatio = (mins - 480) / 120;
-      else if (mins > 600) elapsedRatio = 1;
-
-      const remaining = Math.max(0, Math.round(totalQuota * (1 - elapsedRatio)) - breakfastUsedOffset);
-      const pct = Math.round((remaining / totalQuota) * 100);
-
-      document.getElementById("breakfastBox").innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <div>
-            <strong>🌅 천원의 아침밥 (학생식당 08:00~10:00)</strong>
-            <div style="font-size:0.9rem; opacity:0.9; margin-top:4px;">
-              예상 잔여 수량: <strong style="font-size:1.2rem; color:#fde047;">${remaining}개</strong> / ${totalQuota}개 (${pct}%)
-            </div>
-          </div>
-          <button class="btn btn-outline" onclick="reportBreakfastEat()">방금 먹었어요 (-1)</button>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-        <small style="opacity:0.85;">※ 시간대별 소진 예측과 학생 실시간 체크인을 합산한 추정 수량입니다.</small>
-      `;
-    }
-
-    function reportBreakfastEat() {
-      breakfastUsedOffset += 1;
-      localStorage.setItem("kmu_breakfast_offset", String(breakfastUsedOffset));
-      renderBreakfastBanner();
-      showToast("천원의 아침밥 잔여 수량에 반영되었습니다!");
-    }
-
-    // 로그인 UI
-    function renderAuth() {
-      const area = document.getElementById("authArea");
-      if (currentUser) {
-        const allergyTxt = currentUser.allergies.length ? currentUser.allergies.join(", ") : "없음";
-        area.innerHTML = `
-          <span style="font-size:0.85rem; margin-right:8px;">
-            ${currentUser.name} (${currentUser.email}) | 알레르기: <strong>${allergyTxt}</strong>
-          </span>
-          <button class="btn btn-outline" onclick="openLogin()">설정</button>
-          <button class="btn btn-primary" onclick="logout()">로그아웃</button>
-        `;
-      } else {
-        area.innerHTML = `<button class="btn btn-primary" onclick="openLogin()">로그인 / 알레르기 설정</button>`;
-      }
-    }
-
-    function openLogin() {
-      document.getElementById("loginEmail").value = currentUser?.email || "";
-      document.getElementById("loginName").value = currentUser?.name || "";
-      const box = document.getElementById("allergyCheckboxes");
-      box.innerHTML = Object.keys(ALLERGY_MAP).map(a => `
-        <label class="allergy-chip">
-          <input type="checkbox" value="${a}" ${(currentUser?.allergies || []).includes(a) ? "checked" : ""} />
-          ${a}
-        </label>
-      `).join("");
-      document.getElementById("loginModal").classList.add("open");
-    }
-
-    function closeLogin() { document.getElementById("loginModal").classList.remove("open"); }
-
-    function saveLogin() {
-      const email = document.getElementById("loginEmail").value.trim();
-      const name = document.getElementById("loginName").value.trim() || "국민인";
-      if (!email || !email.includes("@")) return alert("알림을 받을 올바른 이메일을 입력하세요.");
-      const allergies = [...document.querySelectorAll("#allergyCheckboxes input:checked")].map(el => el.value);
-      currentUser = { email, name, allergies };
-      localStorage.setItem("kmu_user", JSON.stringify(currentUser));
-      closeLogin();
-      renderAuth();
-      renderMenus();
-      showToast(`${name}님 로그인 완료! 알레르기 필터가 적용되었습니다.`);
-    }
-
-    function logout() {
-      currentUser = null;
-      localStorage.removeItem("kmu_user");
-      renderAuth();
-      renderMenus();
-    }
-
-    // 하트 1인 1회 제한 + 품절 30분 전 알림 예약
-    function pressHeart(menuId, cornerName) {
-      if (!currentUser) {
-        showToast("하트 및 30분 전 알림 예약은 로그인 후 이용할 수 있습니다.");
-        return openLogin();
-      }
-      const list = heartDB[menuId] || [];
-      if (list.includes(currentUser.email)) {
-        return showToast("이미 하트를 누른 메뉴입니다. (계정당 1회 제한)");
-      }
-      list.push(currentUser.email);
-      heartDB[menuId] = list;
-      localStorage.setItem("kmu_hearts", JSON.stringify(heartDB));
-
-      const { soldOutStr, alertStr } = predictSoldOut(cornerName, list.length, false);
-      renderMenus();
-      showToast(`❤️ 하트 완료! 예상 품절(${soldOutStr}) 30분 전인 ${alertStr}에 ${currentUser.email}로 알림이 예약되었습니다.`);
-
-      // TODO: 실제 이메일 예약 발송 연동 지점 (Firestore alert_queue 컬렉션에 저장)
-      // db.collection("alert_queue").add({ email: currentUser.email, menuId, cornerName, alertTime: alertStr, sent: false });
-    }
-
-    function reportSoldOut(menuId) {
-      if (!currentUser) return openLogin();
-      soldOutReports[menuId] = true;
-      localStorage.setItem("kmu_soldout", JSON.stringify(soldOutReports));
-      renderMenus();
-      showToast("실시간 품절 상태로 업데이트되었습니다.");
-    }
-
-    // 메뉴 렌더링
-    function renderMenus() {
-      const cafIdx = document.getElementById("cafeteriaSelect").value;
-      const dateStr = document.getElementById("dateSelect").value;
-      const caf = menuData.cafeterias[cafIdx];
-      const grid = document.getElementById("menuGrid");
-      grid.innerHTML = "";
-
-      caf.corners.forEach(c => {
-        const dayMenu = c.menus[dateStr];
-        if (!dayMenu) return;
-
-        const menuText = dayMenu.items.join("\n");
-        const fullSearchText = `${c.corner} ${menuText}`;
-        const menuId = `${caf.name}_${c.corner}_${dateStr}`;
-        const hearts = heartDB[menuId] || [];
-        const hasLiked = currentUser && hearts.includes(currentUser.email);
-        const isSoldOut = Boolean(soldOutReports[menuId]);
-
-        const allergyHits = detectAllergies(fullSearchText);
-        const kcal = estimateKcal(fullSearchText);
-        const { soldOutStr, alertStr } = predictSoldOut(c.corner, hearts.length, isSoldOut);
-
-        const card = document.createElement("div");
-        card.className = `card ${allergyHits.length ? "allergy-alert" : ""}`;
-        card.innerHTML = `
-          <div class="card-header">
-            <span class="corner-tag">${c.corner} ${dayMenu.price}</span>
-            <span class="kcal-tag">약 ${kcal} kcal</span>
-          </div>
-          ${allergyHits.length ? `
-            <div class="allergy-light">
-              <span class="red-dot"></span>
-              알레르기 주의: ${allergyHits.join(", ")}
-            </div>
-          ` : ""}
-          <div class="menu-list">${menuText}</div>
-          <div class="meta-box">
-            ⏱️ 품절 예상: <strong>${soldOutStr}</strong><br/>
-            🔔 하트 시 알림 예정: <strong>${alertStr}</strong> (30분 전)
-          </div>
-          <div class="card-footer">
-            <button class="btn btn-heart ${hasLiked ? "liked" : ""}" onclick="pressHeart('${menuId}', '${c.corner}')">
-              ${hasLiked ? "❤️ 알림 예약됨" : "🤍 하트"} (${hearts.length})
-            </button>
-            <button class="btn btn-outline" onclick="reportSoldOut('${menuId}')" ${isSoldOut ? "disabled" : ""}>
-              ${isSoldOut ? "품절됨" : "품절 제보"}
-            </button>
-          </div>
-        `;
-        grid.appendChild(card);
-      });
-    }
-
-    // 초기화: menu.json 로드
-    async function init() {
-      renderAuth();
-      renderBreakfastBanner();
-
-      try {
-        const res = await fetch("./menu.json", { cache: "no-store" });
-        if (!res.ok) throw new Error("No menu.json");
-        menuData = await res.json();
-        document.getElementById("statusText").textContent = `국민대 홈페이지 동기화: ${menuData.updated_at}`;
-      } catch {
-        menuData = FALLBACK_DATA;
-        document.getElementById("statusText").textContent = "menu.json 대기 중 (국민대 샘플 식단 표시)";
-      }
-
-      const cafSelect = document.getElementById("cafeteriaSelect");
-      cafSelect.innerHTML = menuData.cafeterias.map((c, i) => `<option value="${i}">${c.name}</option>`).join("");
-      cafSelect.onchange = updateDateDropdown;
-      updateDateDropdown();
-    }
-
-    function updateDateDropdown() {
-      const caf = menuData.cafeterias[document.getElementById("cafeteriaSelect").value];
-      const dateSelect = document.getElementById("dateSelect");
-      dateSelect.innerHTML = caf.dates.map(d => `<option value="${d}">${d}</option>`).join("");
-      dateSelect.onchange = renderMenus;
-      renderMenus();
-    }
-
-    init();
-  </script>
-</body>
-</html>
+    let heartDB = JSON.parse(localStorage.getItem("kmu_hearts") || "{}");
+    let soldOutReports = JSON.parse(localStorage.getItem("kmu
