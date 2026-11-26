@@ -9,7 +9,7 @@
       --bg: #f6f7fb; --card: #ffffff; --primary: #2563eb;
       --danger: #ef4444; --warn: #f59e0b; --ok: #10b981; --text: #1f2937;
     }
-    * { box-sizing: border-box; font-family: 'Pretendard', -apple-system, sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; font-family: 'Pretendard', -apple-system, sans-serif; }
     body { margin: 0; background: var(--bg); color: var(--text); }
     header {
       background: #111827; color: #fff; padding: 16px 20px;
@@ -172,32 +172,139 @@
       ["주먹밥", 380], ["천원의 아침밥", 570]
     ];
 
-    // 오늘 날짜 유틸
+    function safeGetStorage(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
     function getTodayKey() {
       const now = new Date();
       return `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}`;
     }
 
     function compareDateWithToday(dateStr) {
-      const match = dateStr.match(/(\d{4})\.(\d{2})\.(\d{2})/);
+      const match = String(dateStr).match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
       if (!match) return "other";
-      const targetKey = `${match[1]}.${match[2]}.${match[3]}`;
-      const todayKey = getTodayKey();
-      if (targetKey === todayKey) return "today";
-      return targetKey > todayKey ? "future" : "past";
+      const targetKey = `${match[1]}.${match[2]}.${match[3]}`; const todayKey = getTodayKey(); if (targetKey === todayKey) return "today"; return targetKey > todayKey ? "future" : "past"; }  function escapeHtml(str) { const amp = String.fromCharCode(38); return String(str) .replace(/&/g, amp + "amp;") .replace(/</g, amp + "lt;") .replace(/>/g, amp + "gt;") .replace(/"/g, amp + "quot;"); }  // 3. 상태 관리 const TODAY_KEY = getTodayKey(); let menuData = null; let currentUser = safeGetStorage("kmu_user", null); let heartDB = safeGetStorage("kmu_hearts", {}); let soldOutReports = safeGetStorage("kmu_soldout", {}); let breakfastCheckedUsers = safeGetStorage(`kmu_breakfast_users_${TODAY_KEY}`, []);
+    if (!Array.isArray(breakfastCheckedUsers)) breakfastCheckedUsers = [];
+
+    const FALLBACK_DATA = {
+      updated_at: "샘플 모드",
+      cafeterias: [
+        {
+          name: "학생식당(복지관 1층)",
+          dates: [TODAY_KEY],
+          corners: [
+            {
+              corner: "천원의 아침밥",
+              menus: { [TODAY_KEY]: { items: ["순두부계란국", "돈육볶음", "양배추쌈*쌈장", "쌀밥/도시락김", "국민두유"], price: "￦1000" } }
+            },
+            {
+              corner: "가마 중식",
+              menus: { [TODAY_KEY]: { items: ["뚝)돼지고기순두부찌개", "쌀밥", "떡산적스테이크", "콩나물무침"], price: "￦5200" } }
+            }
+          ]
+        }
+      ]
+    };
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.style.display = "block";
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.style.display = "none"; }, 3200);
     }
 
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, "&")
-        .replace(/</g, "<")
-        .replace(/>/g, ">")
-        .replace(/"/g, """);
+    function estimateKcal(text) {
+      for (const [kw, kcal] of KCAL_RULES) {
+        if (text.includes(kw)) return kcal;
+      }
+      return 550;
     }
 
-    // 3. 상태 관리
-    const TODAY_KEY = getTodayKey();
-    let menuData = null;
-    let currentUser = JSON.parse(localStorage.getItem("kmu_user") || "null");
-    let heartDB = JSON.parse(localStorage.getItem("kmu_hearts") || "{}");
-    let soldOutReports = JSON.parse(localStorage.getItem("kmu
+    function detectAllergies(text) {
+      if (!currentUser || !Array.isArray(currentUser.allergies) || !currentUser.allergies.length) return [];
+      const hits = [];
+      for (const allergen of currentUser.allergies) {
+        const keywords = ALLERGY_MAP[allergen] || [];
+        const matched = keywords.filter(kw => text.includes(kw));
+        if (matched.length > 0) hits.push(`${allergen}(${matched[0]})`);
+      }
+      return hits;
+    }
+
+    // 품절 예상 시간 및 30분 전 알림 시간 계산 (조식 / 중식 / 중석식 / 석식 분리)
+    function predictSoldOut(cornerName, menuText, heartCount, isSoldOut) {
+      if (isSoldOut) return { mealLabel: "", soldOutStr: "품절됨", alertStr: "-" };
+
+      const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+      const isBreakfast = cornerName.includes("아침") || cornerName.includes("조식");
+      const hasLunch = cornerName.includes("중식") || menuText.includes("[중식]");
+      const hasDinner = cornerName.includes("석식") || menuText.includes("[석식]");
+      const isLunchDinner = menuText.includes("[중석식]");
+
+      let mealLabel = "중식 기준";
+      let baseMin = 13 * 60 + 40;
+      let minBound = 12 * 60 + 10;
+
+      if (isBreakfast) {
+        mealLabel = "조식 기준";
+        baseMin = 9 * 60 + 20;
+        minBound = 8 * 60 + 30;
+      } else if ((hasDinner && !hasLunch && !isLunchDinner) || (hasDinner && nowMins >= 15 * 60)) {
+        mealLabel = "석식 기준";
+        baseMin = 18 * 60 + 15;
+        minBound = 17 * 60 + 30;
+      } else if (isLunchDinner && !hasLunch) {
+        mealLabel = "중·석식 기준";
+        baseMin = 18 * 60;
+        minBound = 16 * 60 + 30;
+      }
+
+      const predictedMin = Math.max(minBound, baseMin - heartCount * 2);
+      const alertMin = predictedMin - 30;
+      const fmt = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+      return { mealLabel, soldOutStr: fmt(predictedMin), alertStr: fmt(alertMin) };
+    }
+
+    // 천원의 아침밥 배너 렌더링
+    function renderBreakfastBanner() {
+      const box = document.getElementById("breakfastBox");
+      const totalQuota = 150;
+      const now = new Date();
+      const day = now.getDay();
+      const mins = now.getHours() * 60 + now.getMinutes();
+
+      const isWeekend = day === 0 || day === 6;
+      const isBeforeOpen = !isWeekend && mins < 480;
+      const isOpen = !isWeekend && mins >= 480 && mins <= 600;
+      const hasChecked = currentUser && breakfastCheckedUsers.includes(currentUser.email);
+
+      let remaining = 0;
+      let statusDesc = "";
+      let btnLabel = "방금 먹었어요";
+      let btnDisabled = false;
+
+      if (isWeekend) {
+        remaining = 0;
+        statusDesc = "주말에는 천원의 아침밥을 운영하지 않습니다.";
+        btnLabel = "주말 미운영";
+        btnDisabled = true;
+      } else if (isBeforeOpen) {
+        remaining = totalQuota;
+        statusDesc = `오픈 전 · 준비 수량 <strong style="font-size:1.15rem; color:#fde047;">${totalQuota}개</strong> (08:00 시작)`; btnLabel = "08:00 오픈"; btnDisabled = true; } else if (isOpen) { const elapsedRatio = (mins - 480) / 120; remaining = Math.max(0, Math.round(totalQuota * (1 - elapsedRatio)) - breakfastCheckedUsers.length); const pct = Math.round((remaining / totalQuota) * 100); if (remaining === 0) { statusDesc = `오늘 수량이 모두 소진되었습니다 (0 / ${totalQuota}개)`;
+          btnLabel = "오늘 마감";
+          btnDisabled = true;
+        } else {
+          statusDesc = `예상 잔여 수량: <strong style="font-size:1.2rem; color:#fde047;">${remaining}개</strong> / ${totalQuota}개 (${pct}\%)`; if (hasChecked) { btnLabel = "오늘 체크 완료"; btnDisabled = true; } } } else { remaining = 0; statusDesc = `오늘 운영이 마감되었습니다 (평일 08:00~10:00)`; btnLabel = "오늘 마감"; btnDisabled = true; }  const pct = Math.round((remaining / totalQuota) * 100); box.className = `breakfast-banner ${(!isOpen && !isBeforeOpen) || remaining === 0 ? "closed" : ""}`;
+      box.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <strong>🌅 천원의 아침밥 (학생식당 평일 08:
