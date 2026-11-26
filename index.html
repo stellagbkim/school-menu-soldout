@@ -1,126 +1,372 @@
-<h1>학식 품절 알림</h1>
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>학식 품절 알림</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>학식 품절 알리미</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">
 <style>
-  :root {
-    --bg: #e9efec; --card: #ffffff; --ink: #18282d; --sub: #5b6b70; --line: #d3ddd9;
-    --ok: #1f8a5b; --warn: #c97a10; --out: #b83a2e; --track: #e3eae7;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink);
-    font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
-  header h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
-  header p { margin: 4px 0 0; color: var(--sub); font-size: 15px; }
-  .clock { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 6px; }
-  .clock b { font-size: 34px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-  .clock span { color: var(--sub); font-size: 14px; }
-  .notice { background: #fff6dc; border: 1px solid #ecd58a; border-radius: 8px; padding: 10px 12px;
-    font-size: 13.5px; margin: 10px 0 18px; }
-  .menu { display: grid; gap: 14px; }
-  .item { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
-    display: grid; grid-template-columns: 84px 1fr; gap: 14px; }
-  .item.out { background: #f4f1f0; }
-  .item.out .photo { filter: grayscale(1); opacity: .55; }
-  .photo { width: 84px; height: 84px; border-radius: 10px; background: #eef3f0;
-    display: grid; place-items: center; font-size: 44px; }
-  .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .name { font-size: 18px; font-weight: 700; margin: 0; }
-  .name small { display: block; font-size: 12.5px; font-weight: 400; color: var(--sub); }
-  .chip { flex: none; font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: #fff; }
-  .s-ok { background: var(--ok); } .s-warn { background: var(--warn); } .s-out { background: var(--out); }
-  .meta { color: var(--sub); font-size: 14px; margin: 4px 0 8px; }
-  .bar { height: 10px; background: var(--track); border-radius: 999px; overflow: hidden; }
-  .bar i { display: block; height: 100%; border-radius: 999px; transition: width .6s ease; }
-  .stock { display: flex; justify-content: space-between; font-size: 14px; margin-top: 6px; }
-  .eta { font-weight: 700; }
-  .eta.s-ok-t { color: var(--ok); } .eta.s-warn-t { color: var(--warn); } .eta.s-out-t { color: var(--out); }
-  footer { margin-top: 22px; color: var(--sub); font-size: 12.5px; }
-  @media (max-width: 380px) { .item { grid-template-columns: 64px 1fr; } .photo { width: 64px; height: 64px; font-size: 34px; } }
-  @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+:root{--logo:url(data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAFAAUADASIAAhEBAxEB/8QAHAABAAIDAQEBAAAAAAAAAAAAAAYHBAUIAwEC/8QATxAAAQMDAQQGBAsDCAcJAAAAAQACAwQFEQYHEiExE0FRYXGBCBQikRUjMkJSYnKhscHRM1OzFjdDdIKSk+EXJHOissLSRFZjdYOElKPx/8QAHAEBAAIDAQEBAAAAAAAAAAAAAAUGAgMEBwEI/8QAOhEAAgECBAIHBgUDBQEBAAAAAAECAwQFESExElEGQWFxgZHRExShscHwFSIjMuEHMzQ1QlJy8YKy/9oADAMBAAIRAxEAPwDstERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBETKAIvGSrpY/wBpUws+08BeDrtbGnBuFN/iBZKEnsjB1ILdozUWELtbCcC4U3+IF7x1lJJ+zqoH/ZkBRwkt0FVg9mj2RAQeITKxMwiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIh5LV3Jt5nJjonU1LHy6RxLnnwGMBZQjxPLPIwqT4Fnk33GZWVtLRx79VPHE36x5+A61oK7V9M07lFTyTuPAF3sg+XMpHpISy9NcLhNO888DGfM5K3NvtNBQcaamY130zxd7yupK2prXOT8kcLd5VemUF5v0NPS/wApbnh8krLdAexntkdwPH8F6VmmfWGe1dq10nbI7eHu4KRItfvM084ZLuRtVlTccqjcu9sgs+j69pJimp5R35aViv0xeW8qZjvCQKxEW9YlWW+TOaWDW72zXiVwdN3of9iJ8JG/qvy/T14YMm3vPgWn8CrJRZfidXkjW8Eof8n8PQrEsu9Ad7drafHX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);--bg:#E9EEEC;--ink:#14201B;--mut:#5B6862;--line:#C9D3CE;--on:#1E7F4F;--low:#B85F00;--out:#B3261E;--fav:#E6A800}
+*{box-sizing:border-box}
+body::before{content:"";position:fixed;right:-60px;bottom:-60px;width:380px;height:380px;background:var(--logo) center/contain no-repeat;mix-blend-mode:multiply;opacity:.10;pointer-events:none;z-index:0}
+.wrap,header{position:relative;z-index:1}
+.logo{display:inline-block;width:44px;height:44px;vertical-align:-8px;margin-right:8px;background:var(--logo) center/contain no-repeat,var(--bg);background-blend-mode:multiply;border-radius:50%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Noto Sans KR","Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+header,.wrap{max-width:720px;margin:auto;padding:0 16px}
+header{padding-top:28px}
+h1{font-size:clamp(28px,6vw,44px);font-weight:900;letter-spacing:-.03em;line-height:1.1;margin:0}
+header p{margin:6px 0 0;color:var(--mut)}
+.bar{display:flex;gap:6px;overflow-x:auto;padding:6px 0}
+.bar button,.tools button{flex:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;font:inherit;font-weight:700;cursor:pointer;color:var(--ink)}
+.bar button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.bar.small{flex-wrap:wrap}
+.bar.small button{padding:4px 10px;font-size:13px;font-weight:400}
+.bar.small button[aria-pressed=true]{background:var(--out);border-color:var(--out)}
+.tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:8px 0;font-size:14px}
+.tools select,.tools input[type=time]{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+details{margin:4px 0}summary{cursor:pointer;font-weight:700}
+#alert{margin:10px 0;padding:10px 14px;background:#fff;border:1px solid var(--line);border-left:6px solid var(--fav);border-radius:10px}
+#alert p{margin:2px 0}.t-out{color:var(--out);font-weight:700}.t-low{color:var(--low);font-weight:700}.t-on{color:var(--on);font-weight:700}
+h2{font-size:15px;margin:22px 0 8px}
+.grid{display:flex;flex-direction:column;gap:10px}
+.card{position:relative;display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-left:6px solid var(--on);border-radius:10px;padding:12px;overflow:hidden}
+.card.low{border-left-color:var(--low)}
+.card.out{border-left-color:var(--out)}
+.card.before,.card.closed{border-left-color:#9AA6A0}
+.card.out .bd,.card.out .ph{opacity:.45}
+.card.out::after{content:"품절";position:absolute;right:12px;bottom:10px;transform:rotate(-8deg);border:3px solid var(--out);color:var(--out);font-weight:900;font-size:22px;line-height:1.2;padding:0 8px;border-radius:6px}
+.card.bad{outline:3px solid var(--out);outline-offset:-3px;background:#FDECEA}
+.card.bad h3{color:var(--out)}
+#stale{color:var(--out);font-weight:700}
+.ph{flex:none;width:64px;height:64px;border-radius:8px;background:#EEF2F0;display:grid;place-items:center;font-size:34px;overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover}
+.bd{flex:1;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:12px}
+.fv{border:0;background:none;font-size:22px;cursor:pointer;color:var(--fav);line-height:1;padding:0 2px}
+h3{margin:2px 0;font-size:16px;line-height:1.35;word-break:keep-all}
+.meta{font-size:13px;color:var(--mut)}
+.tags{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.tags i{font-style:normal;font-size:11px;padding:1px 7px;border-radius:99px;background:#EEF2F0;color:var(--mut)}
+.tags i.hit{background:var(--out);color:#fff}
+.warn{margin:4px 0;color:var(--out);font-size:12px;font-weight:700}
+.stat{font-size:13px;font-weight:700}
+.gauge{height:6px;background:#E3E9E6;border-radius:9px;margin:4px 0}
+.gauge b{display:block;height:100%;background:var(--on);border-radius:9px}
+.low .gauge b{background:var(--low)}
+footer{font-size:12px;color:var(--mut);margin:28px 0;border-top:1px solid var(--line);padding-top:12px}
+:focus-visible{outline:3px solid #2457D6;outline-offset:2px}
+@media (prefers-reduced-motion:no-preference){.gauge b{transition:width .4s}}
 </style>
 </head>
 <body>
+<header><h1><span class="logo" role="img" aria-label="KMU 심벌"></span>학식 품절 알리미</h1><p id="sub"></p><p class="meta">국민대학교 학생이 만든 <b>비공식</b> 서비스입니다. 심벌은 학교의 사용 허락을 받아 사용했습니다.</p></header>
 <div class="wrap">
-  <header>
-    <h1>오늘의 학식</h1>
-    <p>식당에 가기 전에 품절 여부를 먼저 확인하세요.</p>
-  </header>
-
-  <div class="clock"><b id="clock">11:00</b><span>시연용 시계 (3초에 1분씩 흘러요)</span></div>
-  <div class="notice">시연용 가상 데이터입니다. 실제 재고, 칼로리, 가격과 다를 수 있습니다.</div>
-
-  <main class="menu" id="menu"></main>
-  <footer>배식 시간 11:00 ~ 13:30 / 품절 임박은 남은 수량이 20% 이하일 때 표시돼요.</footer>
+  <div class="bar" id="days" role="group" aria-label="요일"></div>
+  <div class="bar" id="rests" role="group" aria-label="식당"></div>
+  <div id="alert" aria-live="polite"></div>
+  <details><summary>시간대별 손님 곡선 (품절 예측의 근거)</summary><div id="curve"></div><p class="meta">손님은 끼니마다 한 번 몰린다고 보고(정규분포 가정) 남은 양을 계산해요. 점심은 대부분 14시경 품절되고 가마 점심·학생식당 고정메뉴는 품절되지 않는다는 관찰을 반영했어요. 피크 시각과 준비 수량은 가정값이에요.</p></details>
+  <details open><summary>내 알레르기 설정 — 고른 성분이 든 메뉴는 빨갛게 표시돼요</summary><div class="bar small" id="alg"></div></details>
+  <div class="tools">
+    <label><input type="checkbox" id="onlyOn"> 판매 중만 보기</label>
+    <label><input type="checkbox" id="hideBad"> 내 알레르기 메뉴 숨기기</label>
+    <label>정렬 <select id="sort"><option value="0">코너별</option><option value="p">가격 낮은순</option><option value="k">칼로리 낮은순</option></select></label>
+    <label>시각 <input type="time" id="tm"></label>
+    <button id="nowBtn" type="button">지금 시각</button>
+  </div>
+  <main id="list"></main>
+  <footer>
+    <span id="src">메뉴와 가격은 학교 홈페이지 '오늘의 메뉴' 2026.11.22 주 기준입니다.</span> 재고, 품절 시각, 칼로리, 알레르기 성분은 <b>참고용 추정 데이터</b>(손님 곡선 모델)이며 실제와 다를 수 있습니다. 준비 수량은 천원의 아침밥(250개)만 알려진 값이고 나머지는 가정입니다. 알레르기 정보는 반드시 영양사실에 확인하세요.
+  </footer>
 </div>
-
 <script>
-// 가상 메뉴 데이터 (다음 단계에서 DynamoDB에서 불러오는 방식으로 바꿀 예정)
-// rate: 시연용 판매 속도(분당 개수)
-const MENUS = [
-  { name: "제육덮밥", en: "Spicy pork rice bowl", price: 5500, kcal: 720, emoji: "🍛", total: 120, rate: 1.1 },
-  { name: "돈까스", en: "Pork cutlet", price: 6000, kcal: 850, emoji: "🍱", total: 100, rate: 1.0 },
-  { name: "김치찌개", en: "Kimchi stew", price: 5000, kcal: 560, emoji: "🍲", total: 90, rate: 0.6 },
-  { name: "비빔밥", en: "Bibimbap", price: 5500, kcal: 640, emoji: "🥗", total: 80, rate: 0.5 },
-  { name: "치킨마요덮밥", en: "Chicken mayo rice bowl", price: 5500, kcal: 780, emoji: "🍗", total: 60, rate: 1.2 },
-];
-const OPEN = 11 * 60, CLOSE = 13 * 60 + 30;   // 분 단위
-let now = OPEN;
-let stock = MENUS.map(m => m.total);
+const $=s=>document.querySelector(s);
+const D=[...'월화수목금'];
+const W={b:[[480,600]],l:[[660,840]],d:[[1020,1110]],k:[[660,1020]]};W.a=[W.l[0],W.d[0]];
+const AL=Object.entries({난류:'계란|오므|에그|도리아|까스|카츠|커틀렛|튀김|탕수|전병|푸딩|[가-힣]전(?!골|복)|함박|까르보',우유:'치즈|크림|도리아|푸딩|요거트|요구르트|우유|까르보|리조또|피자',메밀:'메밀|막국수',땅콩:'꾸웨이|땅콩|나시고랭',대두:'두부|된장|콩|두유|간장|고추장|쌈장|짜장|마파|불고기|제육|짬뽕',밀:'면|국수|우동|라면|수제비|까스|카츠|튀김|탕수|만두|파스타|빵|샌드|커틀렛|짬뽕|짜장|함박|버거|전병|파전|피자|스테이크|핫도그',돼지고기:'돈|제육|삼겹|목살|순대|베이컨|햄|스팸|소시지|한돈|뼈찜|보쌈|수육|함박|핫도그|부대|떡갈비|김치찌개',쇠고기:'쇠고기|소고기|불고기|차돌|우삼겹|규동|스키야끼|양지|떡갈비|함박|사골|설렁탕|곰탕|갈비|스테이크|육회|미트볼|육개장|육전|마라샹궈',닭고기:'닭|치킨|영계|백숙|폭찹|강정',새우:'새우|짬뽕|해물|꾸웨이|나시고랭|유산슬|감바스|치돈새|크래미',오징어:'오징어|짬뽕|유산슬|낙지|먹물',조개류:'봉골레|해물|바지락',토마토:'토마토|포모도로|하이라이스|케찹|로제|미트볼'}).map(([k,v])=>[k,new RegExp(v)]);
 
-const pad = n => String(n).padStart(2, "0");
-const hhmm = min => pad(Math.floor(min / 60)) + ":" + pad(min % 60);
+/* 메뉴 데이터: 요일|코너|메뉴|가격|끼니(b조식 l중식 d석식 a중식+석식 k상시) — 나중에 Lambda가 가져온 데이터로 교체 */
+const RAW=`
+#학생식당
+월|착한아침|쇠고기무국·볼어묵조림·쌀밥|3700|b
+화|착한아침|북어콩나물국·미니돈까스·쌀밥|3700|b
+수|착한아침|얼큰닭곰탕·느타리버섯볶음·쌀밥|3700|b
+목|착한아침|순두부계란국·돈육볶음·쌀밥|3700|b
+금|착한아침|콩비지찌개·후레쉬햄구이·쌀밥|3700|b
+월|가마|국물빨간찜닭·당면사리|5500|l
+화|가마|김치찌개&간장불고기·쌀밥|5900|l
+수|가마|돼지고기순두부찌개·떡산적스테이크|5200|l
+목|가마|경상도식쇠고기국·단호박전|4900|l
+금|가마|쫄우동·튀김만두|5500|l
+월|데일리밥|얼큰수제비|3900|l
+화|데일리밥|계란칼국수|3900|l
+수|데일리밥|크로켓하이라이스|3900|l
+목|데일리밥|유산슬덮밥·춘권|3900|l
+금|데일리밥|강된장덮밥|3900|l
+월|채식|국민표 황제정식SET(돈까스·제육볶음)|5900|l
+화|채식|비브필라프·오므라이스|5500|l
+수|채식|우삼겹 규동·마늘칩깐풍기|5500|l
+목|채식|치킨폭찹스테이크SET|5900|l
+금|채식|치돈새SET(치킨까스·돈까스·새우)|5900|l
+월화|인터쉐프|오븐치킨구이&토마토펜네파스타|7000|l
+수|인터쉐프|PREMIUM 김장수육정식|10000|l
+목금|인터쉐프|눈꽃치즈제육도리아|6500|l
+*|누들송|찹쌀탕수육|4000|l
+*|누들송|직화짬뽕|6000|l
+*|누들송|정통꾸웨이띠여우(태국식쌀국수)|7500|l
+월|석식Ⅰ|불고기할라피뇨볶음밥·단호박고로케|5500|d
+화|석식Ⅰ|얼큰순대국·잡채말이깐풍|5200|d
+수|석식Ⅰ|제주식당면해장국·옥수수알전|4900|d
+목|석식Ⅰ|돈육고추장찌개·어묵계란지짐|5200|d
+금|석식Ⅰ|마늘설렁탕·아삭오징어까스|4900|d
+월|석식Ⅱ|에비카츠동·구슬떡볶이|5300|d
+화|석식Ⅱ|매콤차돌시래기비빔밥·누룽지순대강정|5500|d
+수|석식Ⅱ|오돈덮밥·수제고르곤졸라피자|5500|d
+목|석식Ⅱ|오므★유니짜장·레몬마요탕수육|5500|d
+금|석식Ⅱ|눈꽃치즈닭갈비볶음밥·소떡소떡볶음|5200|d
+금|석식Ⅲ|돼지고기갓김치찌개·소떡소떡볶음|7000|d
+#한울식당
+*|SNACK|김말이떡볶이|3300|l
+*|SNACK|치킨강정|2000|l
+*|SNACK|T/O 참치마요주먹밥|3300|l
+*|SNACK|왕만두|1600|l
+월|NOODLE|소고기칼국수&왕만두|4300|l
+화|NOODLE|돈가스잔치국수|4300|l
+화|NOODLE|잔치국수|3300|l
+수|NOODLE|유부우동&새우튀김|4300|l
+수|NOODLE|유부우동|3300|l
+목|NOODLE|떡만두국&메밀전병|4300|l
+목|NOODLE|떡만두국|3300|l
+금|NOODLE|김치비빔국수&왕만두|4300|l
+금|NOODLE|김치비빔국수|3300|l
+월|CUTLET|떡갈비스테이크(데리야끼마요소스)|5500|l
+화|CUTLET|왕소시지 하이라이스|4900|l
+수|CUTLET|고구마치즈돈가스|5900|l
+목|CUTLET|스팸김치밥버거·로제떡볶이|5500|l
+금|CUTLET|영계백숙·해물완자|6500|l
+월|RICE.Oven|크래미볶음밥·핫도그|3900|a
+월|RICE.Oven|닭갈비덮밥·사각어묵볶음|4900|a
+화|RICE.Oven|소고기미역국밥·메추리알조림|4300|a
+화|RICE.Oven|삼겹콩나물덮밥·메추리알조림|5500|a
+수|RICE.Oven|치킨마요덮밥·푸딩|4900|a
+수|RICE.Oven|소고기덮밥·오이생채|5100|a
+목|RICE.Oven|쭈꾸미비빔밥·교자만두튀김|4900|a
+목|RICE.Oven|치즈순대덮밥·와사비무쌈|4300|a
+금|RICE.Oven|나시고랭·새우칩|5100|a
+금|RICE.Oven|닭가슴살덮밥·숙주맛살무침|4300|a
+월|GUKBAP|수육국밥|6000|a
+화|GUKBAP|학식페어 얼큰토마토국물파스타·트리플치즈함박|6500|l
+화|GUKBAP|부대찌개·계란말이|5500|d
+수|GUKBAP|PREMIUM 김장수육정식|10000|l
+수|GUKBAP|얼큰국밥|6500|d
+목|GUKBAP|학식페어 치킨스테이크·갈릭파스타|6500|l
+목|GUKBAP|소고기된장찌개·생선가스|5500|d
+금|GUKBAP|햄콩나물라면&어묵김밥|5900|l
+금|GUKBAP|라면·떡라면·만두라면|1000|d
+#교직원식당
+월|키친1|차돌된장찌개&소면사리·매콤제육볶음|8300|l
+화|키친1|철판)고추장삼겹살정식|8300|l
+수|키친1|소고기애호박영양밥·해물얼큰수제비|8300|l
+목|키친1|스키야끼전골·수제두부커틀렛|8300|l
+금|키친1|동대문닭한마리백숙&칼국수사리|8300|l
+월|키친2|불향숙주낙지덮밥·가래떡크림떡볶이|8300|l
+화|키친2|상하이파스타&베이컨갈릭필라프·돈카츠|8300|l
+수|키친2|일식정통카레정식(새우튀김)|8300|l
+목|키친2|언양식육전비빔막국수·고기만두찜|8300|l
+금|키친2|소고기마라샹궈덮밥·인절미꿔바로우|8300|l
+월|샐러드|샐러리퀴노아샐러드·현미밥|0|l
+화|샐러드|흑임자새싹연두부샐러드·현미밥|0|l
+수|샐러드|샤인머스켓 지중해식샐러드·현미밥|0|l
+목|샐러드|당근라페샐러드·현미밥|0|l
+금|샐러드|쿠스쿠스샐러드·현미밥|0|l
+월|석식|중화잡채덮밥·나가사키짬뽕탕·슈프림탕수육|8300|d
+화|석식|순살감자탕&수제비사리·보리새우미나리전|8300|d
+수|석식|계란탁!콩나물국밥·숯불향간장불고기|8300|d
+목|석식|미나리쌀면곰탕·가자미카레구이|8300|d
+#청향 한식당
+화수목|샐러드|루꼴라유자토마토치킨샐러드&과일주스|11000|a
+월화수|한식|뚝배기뼈찜|11000|a
+목금|한식|늙은호박목살묵은지찌개|11000|a
+월화수|한식|한돈 애호박찌개|15000|a
+목금|한식|사천식마파두부덮밥·어향가지튀김|14000|a
+월화수|한식|황태 한마리 구이와 황태버섯전골 한상|18000|a
+목금|한식|명란아보카도솥밥·미니차돌된장찌개|17000|a
+월화수|한식|청향카츠정식|20000|a
+목금|한식|연포갈비탕|21000|a
+#청향 양식당
+*|PASTA|알리오올리오|18000|l
+*|PASTA|까르보나라|21000|l
+*|PASTA|뚝배기봉골레파스타|24000|l
+*|RISOTTO|트러플베이컨풍기리조또|21000|l
+*|STEAK|채끝스테이크|39000|l
+#K-Bob+
+*|도시락|통스팸김치덮밥|6500|k
+*|도시락|돈가스마요덮밥|7500|k
+*|도시락|우삼겹비빔밥|7900|k
+*|도시락|흑돼지김치찌개|6700|k
+*|오므라이스|돈가스 오므라이스|9000|k
+`;
 
-function statusOf(i) {
-  const left = Math.floor(stock[i]);
-  if (left <= 0) return "out";
-  if (left <= MENUS[i].total * 0.2) return "warn";
-  return "ok";
+const DB={};let cur0;
+RAW.trim().split('\n').forEach(L=>{
+  if(L[0]=='#'){cur0=L.slice(1);DB[cur0]=[];return}
+  const [dy,c,n,p,m]=L.split('|');
+  (dy=='*'?D:[...dy]).forEach(d=>{
+    DB[cur0].push({d,c,n,p:+p,m,r:cur0});
+    if(c=='착한아침')DB[cur0].push({d,c:'천원의 아침밥',n,p:1000,m,r:cur0});
+  });
+});
+
+const store={get(k){try{return JSON.parse(localStorage.getItem(k))||[]}catch(e){return[]}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const fav=new Set(store.get('fav')),alg=new Set(store.get('alg'));
+const nowMin=()=>{const t=new Date();return t.getHours()*60+t.getMinutes()};
+const fmt=m=>String(m/60|0).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const h=s=>{let x=7;for(const ch of s)x=(x*31+ch.charCodeAt(0))>>>0;return x%997/997};
+let day=(d=>d>=1&&d<=5?D[d-1]:'월')(new Date().getDay());
+const today=(d=>d>=1&&d<=5?D[d-1]:null)(new Date().getDay());
+let rest='학생식당',live=true,now=nowMin(),stale=false;
+
+/* ── 수요 곡선 모델 ─────────────────────────────────────────
+   손님이 끼니 시간대에 정규분포 모양으로 몰린다고 보고(μ=피크 시각, σ=퍼짐),
+   메뉴별 인기 점수 r(= 수요/준비 수량)로 남은 양을 계산한다.
+   남은 양(t) = 준비수량 × (1 − r × F(t)),  F(t)=그 시각까지 온 손님의 누적 비율
+   r>1 이면 F(t)=1/r 인 시각에 품절.  ※ 숫자는 가정값 — 팀이 실측해서 보정할 것 */
+const CURVE={b:{mu:530,sd:25},l:{mu:735,sd:35},d:{mu:1055,sd:20},k:{mu:735,sd:100}};
+const QTY={b:150,l:200,d:120,k:80};            // 준비 수량 기본값(가정)
+const erf=x=>{const s=x<0?-1:1;x=Math.abs(x);const t=1/(1+.3275911*x);
+  return s*(1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-.284496736)*t+.254829592)*t*Math.exp(-x*x))};
+const Phi=z=>.5*(1+erf(z/Math.SQRT2));
+const pdf=(m,t)=>{const c=CURVE[m];return Math.exp(-((t-c.mu)**2)/(2*c.sd**2))/(c.sd*Math.sqrt(2*Math.PI))};
+function F(m,t,s,e){const c=CURVE[m],P=x=>Phi((x-c.mu)/c.sd);return Math.min(1,Math.max(0,(P(t)-P(s))/(P(e)-P(s))))}
+function qty(it){return it.c=='천원의 아침밥'?250:QTY[it.m]}   // 250개는 알려진 값
+function pop(it){
+  let r=.85;
+  if(it.c=='천원의 아침밥')r=1.5;
+  if(/까스|카츠|제육|치킨|불고기|닭강정|떡볶이|짜장|탕수|함박/.test(it.n))r+=.45;
+  if(/샐러드|채식|죽|두부/.test(it.n))r-=.3;
+  if(it.p&&it.p<=4500)r+=.2; if(it.p>=8000)r-=.3;
+  r+=({월:.1,금:-.15})[it.d]||0;
+  return Math.max(.3,r);
+}
+/* 팀 관찰: 점심은 대부분 14시경 품절. 단 가마 점심과 학생식당 고정메뉴(5일 내내 같은 메뉴)는 품절되지 않음 */
+const LUNCH_SO=830;                              // 점심 품절 기준 시각(13:50), 인기 높으면 조금 일찍
+const isFixed=it=>it.r=='학생식당'&&it.m!='b'&&DB[it.r].filter(x=>x.c==it.c&&x.n==it.n).length>=5;
+const noSellOut=it=>(it.c=='가마'&&it.m=='l')||isFixed(it);
+function status(it){
+  const ws=W[it.m];let i=ws.findIndex(w=>now<w[1]);if(i<0)i=ws.length-1;
+  const [s,e]=ws[i],m=it.m=='a'?(i?'d':'l'):it.m,Q=qty(it);
+  let r=pop(it);
+  if(m=='l'){r=noSellOut(it)?.75:1/F('l',Math.min(e-2,LUNCH_SO-(pop(it)-.85)*20),s,e)}
+  if(now<s)return{t:'before',txt:fmt(s)+' 판매 시작 · 준비 약 '+Q+'개(가정)'};
+  if(now>=e)return{t:'closed',txt:'판매 종료'};
+  const left=Math.round(Q*(1-r*F(m,now,s,e)));
+  if(left<=0){
+    let lo=s,hi=e;for(let k=0;k<20;k++){const mid=(lo+hi)/2;Q*(1-r*F(m,mid,s,e))>0?lo=mid:hi=mid}
+    return{t:'out',txt:'품절 (약 '+fmt(Math.round(hi/5)*5)+'경)'};
+  }
+  const pct=Math.round(100*left/Q);
+  let so='';
+  if(r>1){let lo=now,hi=e;for(let k=0;k<20;k++){const mid=(lo+hi)/2;Q*(1-r*F(m,mid,s,e))>0?lo=mid:hi=mid}so=' · '+fmt(Math.round(hi/5)*5)+'경 품절 예상'}
+  const lowf=pct<=25&&r>1;
+  return{t:lowf?'low':'on',pct,txt:(lowf?'곧 품절 · ':'')+'남은 양 약 '+left+'개'+so};
+}
+/* 시간대별 손님 곡선 그리기 (끼니별) */
+function curveSvg(){
+  const x0=450,x1=1140,W_=620,H=120,xs=t=>20+(t-x0)/(x1-x0)*W_;
+  const ms=['b','l','d'],mx=Math.max(...ms.map(m=>pdf(m,CURVE[m].mu)));
+  const path=m=>{const [s,e]=W[m][0];let d='';for(let t=s;t<=e;t+=5)d+=(d?'L':'M')+xs(t).toFixed(1)+' '+(H-8-pdf(m,t)/mx*(H-30)).toFixed(1);return d};
+  const nm={b:'아침',l:'점심',d:'저녁'};
+  return `<svg viewBox="0 0 660 ${H+16}" width="100%" role="img" aria-label="시간대별 손님 수 곡선">`+
+   ms.map(m=>`<path d="${path(m)}" fill="none" stroke="#1E7F4F" stroke-width="2.5"/><text x="${xs(CURVE[m].mu)}" y="${H-8-pdf(m,CURVE[m].mu)/mx*(H-30)-6}" font-size="11" text-anchor="middle" fill="#5B6862">${nm[m]} 피크 ${fmt(CURVE[m].mu)}</text>`).join('')+
+   [480,600,720,840,960,1080].map(t=>`<text x="${xs(t)}" y="${H+10}" font-size="10" text-anchor="middle" fill="#5B6862">${fmt(t)}</text>`).join('')+
+   (now>=x0&&now<=x1?`<line x1="${xs(now)}" x2="${xs(now)}" y1="8" y2="${H-6}" stroke="#B3261E" stroke-width="2" stroke-dasharray="4 3"/><text x="${xs(now)+4}" y="16" font-size="11" fill="#B3261E">지금</text>`:'')+
+   `<line x1="20" x2="640" y1="${H-6}" y2="${H-6}" stroke="#C9D3CE"/></svg>`;
+}
+function kcal(n,p){
+  let k=650;
+  if(/샐러드/.test(n)&&!/치킨|스테이크/.test(n))k=380;
+  else if(/라면|국수|우동|칼국수|짬뽕|쌀국수|막국수/.test(n))k=580;
+  else if(/까스|카츠|탕수|튀김|강정|스테이크|폭찹|삼겹|함박|커틀렛/.test(n))k=820;
+  else if(/파스타|리조또/.test(n))k=780;
+  else if(/덮밥|비빔밥|볶음밥|국밥|솥밥|도리아|규동|오므|정식|한상|SET/.test(n))k=750;
+  if(p&&p<=2000)k=300;
+  return Math.round(k/10)*10;
+}
+function emoji(n){
+  const m=[[/샐러드/,'🥗'],[/라면|국수|우동|짬뽕|칼국수/,'🍜'],[/파스타/,'🍝'],[/떡볶이/,'🌶️'],[/버거|샌드/,'🍔'],[/치킨|닭|강정/,'🍗'],[/까스|카츠|탕수|튀김/,'🍤'],[/스테이크|삼겹|구이/,'🥩'],[/국|탕|찌개|전골/,'🍲'],[/밥|덮|도리아|리조또/,'🍚']];
+  for(const [r,e] of m)if(r.test(n))return e;return'🍽️';
+}
+const info=it=>{const a=AL.filter(([,r])=>r.test(it.n)).map(x=>x[0]);return{it,s:status(it),a,hit:a.filter(x=>alg.has(x)),k:kcal(it.n,it.p)}};
+const card=o=>{
+  const {it,s,a,hit,k}=o,f=fav.has(it.n);
+  return `<article class="card ${s.t}${hit.length?' bad':''}">
+  <div class="ph" aria-hidden="true">${emoji(it.n)}</div>
+  <div class="bd"><div class="top"><span>${it.c}</span><button class="fv" data-a="fav" data-v="${it.n}" aria-pressed="${f}" aria-label="${it.n} 즐겨찾기">${f?'♥':'♡'}</button></div>
+  <h3>${it.n}</h3>
+  <div class="meta">${it.p?it.p.toLocaleString()+'원':'가격 미표시'} · 약 ${k}kcal(추정)</div>
+  <div class="tags">${a.map(x=>`<i class="${alg.has(x)?'hit':''}">${x}</i>`).join('')}</div>
+  ${hit.length?`<p class="warn">⚠ 내 알레르기(${hit.join(', ')}) 포함 가능</p>`:''}
+  <div class="stat">${s.pct!=null?`<div class="gauge"><b style="width:${s.pct}%"></b></div>`:''}${s.txt}</div></div></article>`;
+};
+
+function render(){
+  if(live){now=nowMin();$('#tm').value=fmt(now)}
+  $('#sub').innerHTML=`${day}요일 메뉴 · ${fmt(now)} 기준`+(live?'':' (직접 설정한 시각)')+(stale?' <span id="stale">⚠ 지난 주 메뉴일 수 있어요</span>':'');
+  $('#days').innerHTML=D.map(d=>`<button data-a="day" data-v="${d}" aria-pressed="${d==day}">${d}${d==today?' (오늘)':''}</button>`).join('');
+  $('#rests').innerHTML=Object.keys(DB).map(r=>`<button data-a="rest" data-v="${r}" aria-pressed="${r==rest}">${r}</button>`).join('');
+  $('#alg').innerHTML=AL.map(([a])=>`<button data-a="alg" data-v="${a}" aria-pressed="${alg.has(a)}">${a}</button>`).join('');
+
+  const favs=[];
+  Object.entries(DB).forEach(([r,list])=>list.filter(x=>x.d==day&&fav.has(x.n)).forEach(x=>{if(!favs.some(y=>y.it.n==x.n&&y.r==r))favs.push({r,...info(x)})}));
+  $('#alert').innerHTML=!fav.size?'<p>♡를 눌러 즐겨찾기를 추가하면, 그 메뉴가 곧 품절되거나 품절됐을 때 여기서 알려줘요.</p>'
+    :!favs.length?`<p>${day}요일에는 즐겨찾기한 메뉴가 없어요.</p>`
+    :favs.map(f=>`<p>♥ <b>${f.it.n}</b> (${f.r}) — <span class="t-${f.s.t=='low'?'low':f.s.t=='out'?'out':'on'}">${f.s.t=='out'?'품절됐어요':f.s.t=='low'?'곧 품절돼요':f.s.txt}</span></p>`).join('');
+
+  let list=DB[rest].filter(x=>x.d==day).map(info);
+  if($('#onlyOn').checked)list=list.filter(o=>o.s.t=='on'||o.s.t=='low');
+  if($('#hideBad').checked)list=list.filter(o=>!o.hit.length);
+  const sort=$('#sort').value;
+  let html;
+  if(!list.length)html='<p>보여줄 메뉴가 없어요. 요일이나 필터를 바꿔 보세요.</p>';
+  else if(sort!='0'){
+    list.sort((a,b)=>sort=='p'?a.it.p-b.it.p:a.k-b.k);
+    html=`<div class="grid">${list.map(card).join('')}</div>`;
+  }else{
+    const g={};list.forEach(o=>(g[o.it.c]=g[o.it.c]||[]).push(o));
+    html=Object.entries(g).map(([c,l])=>`<h2>${c}</h2><div class="grid">${l.map(card).join('')}</div>`).join('');
+  }
+  $('#list').innerHTML=html;
+  if($('#curve'))$('#curve').innerHTML=curveSvg();
 }
 
-function render() {
-  document.getElementById("clock").textContent = hhmm(now);
-  document.getElementById("menu").innerHTML = MENUS.map((m, i) => {
-    const left = Math.max(0, Math.floor(stock[i]));
-    const st = statusOf(i);
-    const label = { ok: "판매중", warn: "품절 임박", out: "품절" }[st];
-    const color = { ok: "var(--ok)", warn: "var(--warn)", out: "var(--out)" }[st];
-    let eta;
-    if (st === "out") {
-      eta = "품절되었어요";
-    } else {
-      const soldOutAt = now + Math.round(left / m.rate);
-      eta = soldOutAt >= CLOSE ? "마감까지 여유 있어요" : "약 " + hhmm(soldOutAt) + "경 품절 예상";
-    }
-    return `
-      <article class="item ${st === "out" ? "out" : ""}">
-        <div class="photo" aria-hidden="true">${m.emoji}</div>
-        <div>
-          <div class="top">
-            <h2 class="name">${m.name}<small>${m.en}</small></h2>
-            <span class="chip s-${st}">${label}</span>
-          </div>
-          <div class="meta">${m.price.toLocaleString()}원, ${m.kcal}kcal</div>
-          <div class="bar"><i style="width:${(left / m.total) * 100}%; background:${color}"></i></div>
-          <div class="stock"><span>남은 수량 ${left}개</span><span class="eta s-${st}-t">${eta}</span></div>
-        </div>
-      </article>`;
-  }).join("");
-}
-
-// 시연용 시뮬레이션: 3초마다 1분이 지나고 재고가 줄어요
-function tick() {
-  now += 1;
-  if (now > CLOSE) { now = OPEN; stock = MENUS.map(m => m.total); }
-  MENUS.forEach((m, i) => { stock[i] = Math.max(0, stock[i] - m.rate * (0.6 + Math.random() * 0.8)); });
+/* 매주 자동 갱신: menu.json(scrape_menu.py가 만듦)을 읽고, 실패하면 위의 RAW(고정 메뉴)로 계속 동작 */
+function load(j){
+  const items=(j.items||[]);if(items.length<10)return;
+  Object.keys(DB).forEach(k=>delete DB[k]);
+  items.forEach(x=>(DB[x.r]=DB[x.r]||[]).push({d:x.d,c:x.c,n:x.n,p:x.p,m:x.m,r:x.r}));
+  if(!DB[rest])rest=Object.keys(DB)[0];
+  if(j.week_start){
+    const ws=new Date(j.week_start+'T00:00:00');
+    stale=(Date.now()-ws)/864e5>=7;
+    $('#src').textContent=`메뉴와 가격은 학교 홈페이지 '오늘의 메뉴' ${j.week_start.replace(/-/g,'.')} 주 기준입니다(${j.fetched_at||''} 수집).`;
+  }
   render();
 }
+fetch('menu.json',{cache:'no-store'}).then(r=>r.ok?r.json():Promise.reject()).then(load).catch(()=>{});
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;
+  const v=b.dataset.v;
+  if(b.dataset.a=='day')day=v;
+  if(b.dataset.a=='rest')rest=v;
+  if(b.dataset.a=='alg'){alg.has(v)?alg.delete(v):alg.add(v);store.set('alg',[...alg])}
+  if(b.dataset.a=='fav'){fav.has(v)?fav.delete(v):fav.add(v);store.set('fav',[...fav])}
+  render();
+});
+$('#onlyOn').onchange=$('#hideBad').onchange=$('#sort').onchange=render;
+$('#tm').onchange=e=>{const [hh,mm]=e.target.value.split(':').map(Number);if(!isNaN(hh)){now=hh*60+mm;live=false;render()}};
+$('#nowBtn').onclick=()=>{live=true;render()};
+setInterval(()=>{if(live)render()},60000);
 render();
-setInterval(tick, 3000);
 </script>
 </body>
 </html>
