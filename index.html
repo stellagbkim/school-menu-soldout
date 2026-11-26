@@ -189,7 +189,27 @@
     function compareDateWithToday(dateStr) {
       const match = String(dateStr).match(/(\d{4})[.\-](\d{2})[.\-](\d{2})/);
       if (!match) return "other";
-      const targetKey = `${match[1]}.${match[2]}.${match[3]}`; const todayKey = getTodayKey(); if (targetKey === todayKey) return "today"; return targetKey > todayKey ? "future" : "past"; }  function escapeHtml(str) { const amp = String.fromCharCode(38); return String(str) .replace(/&/g, amp + "amp;") .replace(/</g, amp + "lt;") .replace(/>/g, amp + "gt;") .replace(/"/g, amp + "quot;"); }  // 3. 상태 관리 const TODAY_KEY = getTodayKey(); let menuData = null; let currentUser = safeGetStorage("kmu_user", null); let heartDB = safeGetStorage("kmu_hearts", {}); let soldOutReports = safeGetStorage("kmu_soldout", {}); let breakfastCheckedUsers = safeGetStorage(`kmu_breakfast_users_${TODAY_KEY}`, []);
+      const targetKey = `${match[1]}.${match[2]}.${match[3]}`;
+      const todayKey = getTodayKey();
+      if (targetKey === todayKey) return "today";
+      return targetKey > todayKey ? "future" : "past";
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    // 3. 상태 관리
+    const TODAY_KEY = getTodayKey();
+    let menuData = null;
+    let currentUser = safeGetStorage("kmu_user", null);
+    let heartDB = safeGetStorage("kmu_hearts", {});
+    let soldOutReports = safeGetStorage("kmu_soldout", {});
+    let breakfastCheckedUsers = safeGetStorage(`kmu_breakfast_users_${TODAY_KEY}`, []);
     if (!Array.isArray(breakfastCheckedUsers)) breakfastCheckedUsers = [];
 
     const FALLBACK_DATA = {
@@ -299,12 +319,321 @@
         btnDisabled = true;
       } else if (isBeforeOpen) {
         remaining = totalQuota;
-        statusDesc = `오픈 전 · 준비 수량 <strong style="font-size:1.15rem; color:#fde047;">${totalQuota}개</strong> (08:00 시작)`; btnLabel = "08:00 오픈"; btnDisabled = true; } else if (isOpen) { const elapsedRatio = (mins - 480) / 120; remaining = Math.max(0, Math.round(totalQuota * (1 - elapsedRatio)) - breakfastCheckedUsers.length); const pct = Math.round((remaining / totalQuota) * 100); if (remaining === 0) { statusDesc = `오늘 수량이 모두 소진되었습니다 (0 / ${totalQuota}개)`;
+        statusDesc = `오픈 전 · 준비 수량 <strong style="font-size:1.15rem; color:#fde047;">${totalQuota}개</strong> (08:00 시작)`;
+        btnLabel = "08:00 오픈";
+        btnDisabled = true;
+      } else if (isOpen) {
+        const elapsedRatio = (mins - 480) / 120;
+        remaining = Math.max(0, Math.round(totalQuota * (1 - elapsedRatio)) - breakfastCheckedUsers.length);
+        const pct = Math.round((remaining / totalQuota) * 100);
+        if (remaining === 0) {
+          statusDesc = `오늘 수량이 모두 소진되었습니다 (0 / ${totalQuota}개)`;
           btnLabel = "오늘 마감";
           btnDisabled = true;
         } else {
-          statusDesc = `예상 잔여 수량: <strong style="font-size:1.2rem; color:#fde047;">${remaining}개</strong> / ${totalQuota}개 (${pct}\%)`; if (hasChecked) { btnLabel = "오늘 체크 완료"; btnDisabled = true; } } } else { remaining = 0; statusDesc = `오늘 운영이 마감되었습니다 (평일 08:00~10:00)`; btnLabel = "오늘 마감"; btnDisabled = true; }  const pct = Math.round((remaining / totalQuota) * 100); box.className = `breakfast-banner ${(!isOpen && !isBeforeOpen) || remaining === 0 ? "closed" : ""}`;
+          statusDesc = `예상 잔여 수량: <strong style="font-size:1.2rem; color:#fde047;">${remaining}개</strong> / ${totalQuota}개 (${pct}%)`;
+          if (hasChecked) {
+            btnLabel = "오늘 체크 완료";
+            btnDisabled = true;
+          }
+        }
+      } else {
+        remaining = 0;
+        statusDesc = `오늘 운영이 마감되었습니다 (평일 08:00~10:00)`;
+        btnLabel = "오늘 마감";
+        btnDisabled = true;
+      }
+
+      const pct = Math.round((remaining / totalQuota) * 100);
+      box.className = `breakfast-banner ${(!isOpen && !isBeforeOpen) || remaining === 0 ? "closed" : ""}`;
       box.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
           <div>
-            <strong>🌅 천원의 아침밥 (학생식당 평일 08:
+            <strong>🌅 천원의 아침밥 (학생식당 평일 08:00~10:00)</strong>
+            <div style="font-size:0.9rem; opacity:0.95; margin-top:4px;">${statusDesc}</div>
+          </div>
+          <button class="btn btn-outline" id="breakfastCheckBtn" ${btnDisabled ? "disabled" : ""}>${btnLabel}</button>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <small style="opacity:0.85;">※ 시간대별 소진 예측과 학생 체크인을 합산한 추정 수량입니다 (계정당 1일 1회 체크).</small>
+      `;
+
+      const checkBtn = document.getElementById("breakfastCheckBtn");
+      if (checkBtn && !btnDisabled) {
+        checkBtn.addEventListener("click", reportBreakfastEat);
+      }
+    }
+
+    function reportBreakfastEat() {
+      if (!currentUser) {
+        showToast("중복 방지를 위해 로그인 후 체크할 수 있습니다.");
+        return openLogin();
+      }
+      if (breakfastCheckedUsers.includes(currentUser.email)) {
+        return showToast("오늘은 이미 체크하셨습니다.");
+      }
+      breakfastCheckedUsers.push(currentUser.email);
+      localStorage.setItem(`kmu_breakfast_users_${TODAY_KEY}`, JSON.stringify(breakfastCheckedUsers));
+      renderBreakfastBanner();
+      showToast("천원의 아침밥 잔여 수량에 반영되었습니다.");
+    }
+
+    // 로그인 UI
+    function renderAuth() {
+      const area = document.getElementById("authArea");
+      if (currentUser) {
+        const allergies = Array.isArray(currentUser.allergies) ? currentUser.allergies : [];
+        const allergyTxt = allergies.length ? allergies.join(", ") : "없음";
+        area.innerHTML = `
+          <span style="font-size:0.85rem; margin-right:8px;">
+            ${escapeHtml(currentUser.name || "국민인")} (${escapeHtml(currentUser.email || "")}) | 알레르기: <strong>${escapeHtml(allergyTxt)}</strong>
+          </span>
+          <button class="btn btn-outline" onclick="openLogin()">설정</button>
+          <button class="btn btn-primary" onclick="logout()">로그아웃</button>
+        `;
+      } else {
+        area.innerHTML = `<button class="btn btn-primary" onclick="openLogin()">로그인 / 알레르기 설정</button>`;
+      }
+    }
+
+    function openLogin() {
+      document.getElementById("loginEmail").value = currentUser?.email || "";
+      document.getElementById("loginName").value = currentUser?.name || "";
+      const saved = Array.isArray(currentUser?.allergies) ? currentUser.allergies : [];
+      const box = document.getElementById("allergyCheckboxes");
+      box.innerHTML = Object.keys(ALLERGY_MAP).map(a => `
+        <label class="allergy-chip">
+          <input type="checkbox" value="${a}" ${saved.includes(a) ? "checked" : ""} />
+          ${a}
+        </label>
+      `).join("");
+      document.getElementById("loginModal").classList.add("open");
+    }
+
+    function closeLogin() { document.getElementById("loginModal").classList.remove("open"); }
+
+    // AWS DynamoDB에서 기존 계정 정보 불러오기
+    async function loadSavedUser() {
+      const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+      if (!email || !email.includes("@")) return alert("조회할 이메일을 입력하세요.");
+
+      const btn = document.getElementById("loadUserBtn");
+      btn.disabled = true;
+      btn.textContent = "조회 중...";
+
+      try {
+        const res = await fetch(`${USER_API_URL}?email=${encodeURIComponent(email)}`);
+        if (res.status === 404) return showToast("저장된 계정이 없습니다. 새로 입력 후 저장하세요.");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const { user } = await res.json();
+        document.getElementById("loginName").value = user.name || "";
+        const savedAllergies = user.allergies || [];
+        document.querySelectorAll("#allergyCheckboxes input").forEach(cb => {
+          cb.checked = savedAllergies.includes(cb.value);
+        });
+        showToast("AWS DB에서 기존 알레르기 설정을 불러왔습니다.");
+      } catch (e) {
+        console.error(e);
+        showToast("DB 조회 중 오류가 발생했습니다. 개발자 도구(F12) 콘솔을 확인하세요.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "불러오기";
+      }
+    }
+
+    // AWS DynamoDB에 회원 정보 저장 및 로그인
+    async function saveLogin() {
+      const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+      const name = document.getElementById("loginName").value.trim() || "국민인";
+      if (!email || !email.includes("@")) return alert("알림을 받을 올바른 이메일을 입력하세요.");
+      const allergies = [...document.querySelectorAll("#allergyCheckboxes input:checked")].map(el => el.value);
+
+      const btn = document.getElementById("saveLoginBtn");
+      btn.disabled = true;
+      btn.textContent = "저장 중...";
+
+      try {
+        const res = await fetch(USER_API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify({ email, name, allergies })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        currentUser = { email, name, allergies };
+        localStorage.setItem("kmu_user", JSON.stringify(currentUser));
+        closeLogin();
+        renderAuth();
+        renderBreakfastBanner();
+        renderMenus();
+        showToast(`${name}님 로그인 정보가 AWS DB에 저장되었습니다.`);
+      } catch (e) {
+        console.error(e);
+        alert("AWS DB 저장에 실패했습니다. F12 콘솔 에러 메시지를 확인해 주세요.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "저장 및 로그인";
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem("kmu_user");
+      renderAuth();
+      renderBreakfastBanner();
+      renderMenus();
+    }
+
+    function pressHeart(menuId, cornerName, menuText) {
+      if (!currentUser) {
+        showToast("하트 및 30분 전 알림 예약은 로그인 후 이용할 수 있습니다.");
+        return openLogin();
+      }
+      const list = heartDB[menuId] || [];
+      if (list.includes(currentUser.email)) {
+        return showToast("이미 하트를 누른 메뉴입니다. (계정당 1회 제한)");
+      }
+      list.push(currentUser.email);
+      heartDB[menuId] = list;
+      localStorage.setItem("kmu_hearts", JSON.stringify(heartDB));
+
+      const { soldOutStr, alertStr } = predictSoldOut(cornerName, menuText, list.length, false);
+      renderMenus();
+      showToast(`❤️ 하트 완료! 예상 품절(${soldOutStr}) 30분 전인 ${alertStr}에 ${currentUser.email}로 알림이 예약되었습니다.`);
+    }
+
+    function reportSoldOut(menuId) {
+      if (!currentUser) {
+        showToast("품절 제보는 로그인 후 이용할 수 있습니다.");
+        return openLogin();
+      }
+      soldOutReports[menuId] = true;
+      localStorage.setItem("kmu_soldout", JSON.stringify(soldOutReports));
+      renderMenus();
+      showToast("실시간 품절 상태로 업데이트되었습니다.");
+    }
+
+    function renderMenus() {
+      const cafIdx = document.getElementById("cafeteriaSelect").value;
+      const dateStr = document.getElementById("dateSelect").value;
+      const caf = menuData.cafeterias[cafIdx];
+      const grid = document.getElementById("menuGrid");
+      grid.innerHTML = "";
+
+      if (!caf) return;
+
+      const dateStatus = compareDateWithToday(dateStr);
+      const isToday = dateStatus === "today";
+      let renderedCount = 0;
+
+      caf.corners.forEach(c => {
+        const dayMenu = c.menus[dateStr];
+        if (!dayMenu) return;
+        renderedCount += 1;
+
+        const menuText = dayMenu.items.join("\n");
+        const fullSearchText = `${c.corner} ${menuText}`;
+        const menuId = `${caf.name}_${c.corner}_${dateStr}`;
+        const hearts = heartDB[menuId] || [];
+        const hasLiked = currentUser && hearts.includes(currentUser.email);
+        const isSoldOut = Boolean(soldOutReports[menuId]);
+
+        const allergyHits = detectAllergies(fullSearchText);
+        const kcal = estimateKcal(fullSearchText);
+
+        const card = document.createElement("div");
+        card.className = `card ${allergyHits.length ? "allergy-alert" : ""}`;
+
+        let bottomHtml = "";
+        if (isToday) {
+          const { mealLabel, soldOutStr, alertStr } = predictSoldOut(c.corner, menuText, hearts.length, isSoldOut);
+          bottomHtml = `
+            <div class="meta-box">
+              ⏱️ 품절 예상${mealLabel ? ` (${mealLabel})` : ""}: <strong>${soldOutStr}</strong><br />
+              🔔 하트 시 알림 예정: <strong>${alertStr}</strong>${alertStr !== "-" ? " (30분 전)" : ""}
+            </div>
+            <div class="card-footer">
+              <button class="btn btn-heart ${hasLiked ? "liked" : ""}" data-action="heart">
+                ${hasLiked ? "❤️ 알림 예약됨" : "🤍 하트"} (${hearts.length})
+              </button>
+              <button class="btn btn-outline" data-action="soldout" ${isSoldOut ? "disabled" : ""}>
+                ${isSoldOut ? "품절됨" : "품절 제보"}
+              </button>
+            </div>
+          `;
+        } else {
+          const noticeMsg = dateStatus === "future"
+            ? "📅 예정된 식단입니다 (품절 예측·알림은 당일 제공)"
+            : "종료된 날짜의 식단입니다";
+          bottomHtml = `<div class="meta-muted">${noticeMsg}</div>`;
+        }
+
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="corner-tag">${escapeHtml(c.corner)} ${escapeHtml(dayMenu.price || "")}</span>
+            <span class="kcal-tag">약 ${kcal} kcal</span>
+          </div>
+          ${allergyHits.length ? `
+            <div class="allergy-light">
+              <span class="red-dot"></span>
+              알레르기 주의: ${escapeHtml(allergyHits.join(", "))}
+            </div>
+          ` : ""}
+          <div class="menu-list">${escapeHtml(menuText)}</div>
+          ${bottomHtml}
+        `;
+
+        if (isToday) {
+          card.querySelector('[data-action="heart"]').addEventListener("click", () => {
+            pressHeart(menuId, c.corner, menuText);
+          });
+          card.querySelector('[data-action="soldout"]').addEventListener("click", () => {
+            reportSoldOut(menuId);
+          });
+        }
+
+        grid.appendChild(card);
+      });
+
+      if (renderedCount === 0) {
+        grid.innerHTML = `<div class="empty-state">선택한 날짜(${escapeHtml(dateStr)})에는 운영되는 메뉴가 없습니다.</div>`;
+      }
+    }
+
+    async function init() {
+      renderAuth();
+      renderBreakfastBanner();
+
+      try {
+        const res = await fetch("./menu.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("No menu.json");
+        menuData = await res.json();
+        document.getElementById("statusText").textContent = `국민대 홈페이지 동기화: ${menuData.updated_at}`;
+      } catch {
+        menuData = FALLBACK_DATA;
+        document.getElementById("statusText").textContent = "menu.json 대기 중 (샘플 식단 표시)";
+      }
+
+      const cafSelect = document.getElementById("cafeteriaSelect");
+      cafSelect.innerHTML = menuData.cafeterias.map((c, i) => `<option value="${i}">${escapeHtml(c.name)}</option>`).join("");
+      cafSelect.onchange = updateDateDropdown;
+      updateDateDropdown();
+    }
+
+    function updateDateDropdown() {
+      const caf = menuData.cafeterias[document.getElementById("cafeteriaSelect").value];
+      const dateSelect = document.getElementById("dateSelect");
+      dateSelect.innerHTML = caf.dates.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+
+      const todayMatch = caf.dates.find(d => compareDateWithToday(d) === "today");
+      if (todayMatch) dateSelect.value = todayMatch;
+
+      dateSelect.onchange = renderMenus;
+      renderMenus();
+    }
+
+    init();
+  </script>
+</body>
+</html>
