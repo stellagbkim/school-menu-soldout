@@ -2,9 +2,12 @@ name: Update KMU Menu
 
 on:
   schedule:
-    # 매일 한국시간 오전 07:30 실행 (UTC 22:30)
     - cron: "30 22 * * *"
-  workflow_dispatch: # GitHub에서 버튼으로 수동 실행 가능
+  workflow_dispatch:
+  push:
+    paths:
+      - "crawl.py"
+      - ".github/workflows/update_menu.yml"
 
 permissions:
   contents: write
@@ -14,17 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         run: pip install requests beautifulsoup4
-
       - name: Run crawler
         run: python crawl.py
-
       - name: Commit updated menu.json
         run: |
           git config user.name "github-actions[bot]"
